@@ -1,0 +1,14 @@
+
+# Dependencies
+node_modules/
+
+# MacOS
+.DS_Store
+
+# VSCode
+.vscode/
+
+# Environnement
+.env
+.env.*
+

@@ -1,0 +1,27 @@
+{
+  "name": "wca-notifier",
+  "version": "0.1.0",
+  "description": "An app that will notify you whenever there is a WCA competition nearby.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/robincunningham2/wca-notifier.git"
+  },
+  "keywords": [
+    "automation",
+    "wca",
+    "world-cube-association"
+  ],
+  "author": "Robin Cunningham",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/robincunningham2/wca-notifier/issues"
+  },
+  "homepage": "https://github.com/robincunningham2/wca-notifier#readme",
+  "dependencies": {
+    "express": "^4.17.3"
+  }
+}
