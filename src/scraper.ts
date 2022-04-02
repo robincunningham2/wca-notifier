@@ -1,0 +1,87 @@
+import axios from 'axios';
+import { load } from 'cheerio';
+import { convertCurrency, currencyNameToSymbol } from './currency';
+import { event, eventFilter, settings } from './interfaces';
+
+const EVENTS_BASE_URL = 'https://www.worldcubeassociation.org/competitions/';
+
+const fetchEvent = async (Settings: settings, id: string): Promise<event> => {
+    const iCalRes = await axios.get(EVENTS_BASE_URL + id + '.ics');
+
+    const dateStartRaw = iCalRes.data.match(/DTSTART;VALUE=DATE:(\d+)/)[1];
+    const dateStart = [ dateStartRaw.slice(0, 4), dateStartRaw.slice(4, 6), dateStartRaw.slice(6, 8) ].join('-');
+    const dateEndRaw = iCalRes.data.match(/DTEND;VALUE=DATE:(\d+)/)[1];
+    const dateEnd = [ dateEndRaw.slice(0, 4), dateEndRaw.slice(4, 6), dateEndRaw.slice(6, 8) ].join('-');
+
+    const res = await axios.get(EVENTS_BASE_URL + id);
+    let $ = load(res.data);
+
+    const name = $('#competition-data > h3').text().trim();
+    const city = $('dt:contains(City)').next().text().trim();
+    const venue = $('dt:contains(Venue)').next().text().trim();
+    const latlongStrings = $('dt:contains(Address)').next().find('a').attr('href')?.split('/').at(-1)?.split(',');
+    const latlong = latlongStrings?.map((x) => Number(x)) || [ NaN, NaN ];
+
+    const registerRes = await axios.get(EVENTS_BASE_URL + id + '/register');
+    $ = load(registerRes.data);
+    const text = $('div#competition-data').text();
+
+    const maxCompetitors = parseInt(text.match(/competitor limit of (\d+)/)?.at(1) || 'NaN');
+
+    const registrationFeeMatch = text.match(/registration fee[^\n\d]+(\d+) \(([\w\s]+)\)/);
+    const registrationFee = parseInt(registrationFeeMatch?.at(1) || 'NaN');
+    const registrationFeeCurr = currencyNameToSymbol(registrationFeeMatch?.at(2) || '');
+
+    const convertedCurrency = await convertCurrency(registrationFeeCurr, Settings.preferredCurrency) * registrationFee;
+
+    const registrationsRes = await axios.get(EVENTS_BASE_URL + id + '/registrations');
+    $ = load(registrationsRes.data);
+    const currentCompetitors = parseInt($('tfoot > tr > td:nth-child(1)').text().match(/=\s+(\d+)/)?.at(1) || 'NaN');
+
+    return {
+        id,
+        name,
+        dateStart: new Date(dateStart),
+        dateEnd: new Date(dateEnd),
+        city,
+        venue,
+        latlong,
+        maxCompetitors,
+        registrationFee,
+        registrationFeeCurrency: registrationFeeCurr,
+        convertedRegistrationFee: convertedCurrency,
+        currentCompetitors,
+    };
+};
+
+const filterEvent = (event: event, filter: eventFilter) => {
+    if (new Date() >= event.dateStart) return false;
+    if (filter.registrationFeeMin && event.convertedRegistrationFee < filter.registrationFeeMin) return false;
+    if (filter.registrationFeeMax && event.convertedRegistrationFee > filter.registrationFeeMax) return false;
+    if (!filter.acceptFull && event.currentCompetitors >= event.maxCompetitors) return false;
+    // TODO: filter.acceptClosed
+    return true;
+};
+
+const getEvents = async (Settings: settings) => {
+    const filter = Settings.filter;
+    let urls: string[];
+
+    const baseURL = 'https://www.worldcubeassociation.org/competitions?utf8=%E2%9C%93&search=&state=present&year=al' +
+        `l+years&from_date=&to_date=&delegate=&display=list&region=${filter.continent || filter.country || 'all'}`;
+
+    if (filter.eventFilterType == 1) urls = filter.events.map((event) => `${baseURL}&event_ids%5B%5D=${event}`);
+    else urls = [ baseURL + filter.events.map((event) => `&event_ids%5B%5D=${event}`).join('') ];
+
+    const urlArrays: any[] = await Promise.all(urls.map(async (url) => {
+        const res = await axios.get(url);
+        const $ = load(res.data);
+        return $('ul > li.list-group-item.not-past a').toArray().map((x) => x.attribs.href.split('/').at(-1));
+    }));
+
+    const ids = Array.from(new Set([].concat(...urlArrays)));
+    const events = await Promise.all(ids.map((id) => fetchEvent(Settings, id)));
+    return events.filter((event) => filterEvent(event, filter));
+};
+
+export { fetchEvent, getEvents };
