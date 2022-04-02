@@ -18,7 +18,7 @@ interface settings {
     filter: eventFilter;
     preferredCurrency: string;
     emailAddress: string;
-    alreadySent: string[]; // array of IDs that have already been sent to the user to
+    alreadySent: Set<string>; // set of IDs that have already been sent to the user to
     // prevent the same event from being sent multiple times
 };
 
