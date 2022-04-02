@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { load } from 'cheerio';
 import { convertCurrency, currencyNameToSymbol } from './currency';
-import { event, eventFilter, settings } from './interfaces';
+import { event, settings } from './interfaces';
 
 const EVENTS_BASE_URL = 'https://www.worldcubeassociation.org/competitions/';
 
@@ -54,8 +54,10 @@ const fetchEvent = async (Settings: settings, id: string): Promise<event> => {
     };
 };
 
-const filterEvent = (event: event, filter: eventFilter) => {
+const filterEvent = (event: event, Settings: settings) => {
+    const { filter } = Settings;
     if (new Date() >= event.dateStart) return false;
+    if (Settings.alreadySent.has(event.id)) return false;
     if (filter.registrationFeeMin && event.convertedRegistrationFee < filter.registrationFeeMin) return false;
     if (filter.registrationFeeMax && event.convertedRegistrationFee > filter.registrationFeeMax) return false;
     if (!filter.acceptFull && event.currentCompetitors >= event.maxCompetitors) return false;
@@ -64,7 +66,7 @@ const filterEvent = (event: event, filter: eventFilter) => {
 };
 
 const getEvents = async (Settings: settings) => {
-    const filter = Settings.filter;
+    const { filter } = Settings;
     let urls: string[];
 
     const baseURL = 'https://www.worldcubeassociation.org/competitions?utf8=%E2%9C%93&search=&state=present&year=al' +
@@ -81,7 +83,7 @@ const getEvents = async (Settings: settings) => {
 
     const ids = Array.from(new Set([].concat(...urlArrays)));
     const events = await Promise.all(ids.map((id) => fetchEvent(Settings, id)));
-    return events.filter((event) => filterEvent(event, filter));
+    return events.filter((event) => filterEvent(event, Settings));
 };
 
 export { fetchEvent, getEvents };
