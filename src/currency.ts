@@ -5,6 +5,7 @@ import { readFileSync } from 'fs';
 const CURRENCY_MAP = JSON.parse(readFileSync('currency-map.json', 'utf8'));
 
 const convertCurrency = async (source: string, target: string) => {
+    if (source == target) return 1;
     const res = await axios.get(`https://www.google.com/finance/quote/${source}-${target}`);
     const $ = load(res.data);
     return Number($(`div[data-source="${source}"][data-target="${target}"]`).attr('data-last-price') || 'NaN');
