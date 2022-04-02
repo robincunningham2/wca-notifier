@@ -28,9 +28,9 @@ const fetchEvent = async (Settings: settings, id: string): Promise<event> => {
 
     const maxCompetitors = parseInt(text.match(/competitor limit of (\d+)/)?.at(1) || 'NaN');
 
-    const registrationFeeMatch = text.match(/registration fee[^\n\d]+(\d+) \(([\w\s]+)\)/);
-    const registrationFee = parseInt(registrationFeeMatch?.at(1) || 'NaN');
-    const registrationFeeCurr = currencyNameToSymbol(registrationFeeMatch?.at(2) || '');
+    const registrationFeeMatch = text.match(/registration fee[^\n\d]+((\d+)([,\.]\d+))? \(([\w\s]+)\)/);
+    const registrationFee = Number(registrationFeeMatch?.at(1)?.replace(',', '.') || 'NaN');
+    const registrationFeeCurr = currencyNameToSymbol(registrationFeeMatch?.at(-1) || '');
 
     const convertedCurrency = await convertCurrency(registrationFeeCurr, Settings.preferredCurrency) * registrationFee;
 
