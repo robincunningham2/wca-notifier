@@ -2,36 +2,24 @@ import dotenv from 'dotenv';
 import { MongoClient, ServerApiVersion } from 'mongodb';
 import { getEvents } from './src/scraper';
 import nodemailer from 'nodemailer';
+import ejs from 'ejs';
+import getSymbolFromCurrency from 'currency-symbol-map';
 
 dotenv.config();
 
-(async () => {
-    if (!process.env.GMAIL_AUTH) {
-        throw new Error(
-            'The variable \x1B[1mGMAIL_AUTH\x1B[22m is not defined. Please add this line to your .env file:\n\n\t' +
-            '\x1B[90m...\x1B[39m\n\t\x1B[34mGMAIL_AUTH\x1B[39m=\x1B[32m"<gmail_address>:<gmail_password>"\x1B[39m\n',
-        );
-    }
-
-    if (!process.env.MONGODB_AUTH) {
-        throw new Error(
-            'The variable \x1B[1mMONGODB_AUTH\x1B[22m is not defined. Please add this line to your .env file:\n\n\t' +
-            '\x1B[90m...\x1B[39m\n\t\x1B[34mMONGODB_AUTH\x1B[39m=\x1B[32m"<mongodb_uri>"\x1B[39m\n',
-        );
-    }
-
+const main = async () => {
     const transporter = nodemailer.createTransport({
         host: 'smtp.gmail.com',
         port: 587,
         auth: {
-            user: process.env.GMAIL_AUTH.split(':')[0],
-            pass: process.env.GMAIL_AUTH.split(':')[1],
+            user: process.env.GMAIL_AUTH?.split(':')[0],
+            pass: process.env.GMAIL_AUTH?.split(':')[1],
         },
     });
 
     await transporter.verify();
 
-    const client = new MongoClient(process.env.MONGODB_AUTH, { serverApi: ServerApiVersion.v1 });
+    const client = new MongoClient(process.env.MONGODB_AUTH || '', { serverApi: ServerApiVersion.v1 });
     await client.connect();
 
     const completed = client.db('data').collection('completed');
@@ -54,13 +42,46 @@ dotenv.config();
             alreadySent,
         });
 
-        await Promise.all(events.map((event) => transporter.sendMail({
+        process.stdout.write(`Sending ${subscription.emailAddress} ${events.length} events!\n`);
+
+        if (events.length == 0) return;
+
+        const html = await ejs.renderFile('email.ejs', {
+            events: events.map((event) => ({
+                calendarURL: 'https://www.google.com',
+                eventURL: `https://www.worldcubeassociation.org/competitions/${event.id}#general-info`,
+                date: event.dateStart.getTime(),
+                title: event.name,
+                location: event.city,
+                fee: {
+                    origional: {
+                        symbol: getSymbolFromCurrency(event.registrationFeeCurrency),
+                        ammount: event.registrationFee,
+                    },
+                    converted: {
+                        symbol: getSymbolFromCurrency(subscription.preferredCurrency),
+                        ammount: event.convertedRegistrationFee,
+                    },
+                },
+                loc: event.latlong,
+                competitors: {
+                    current: event.currentCompetitors,
+                    max: event.maxCompetitors,
+                },
+            })),
+            unsubURL: 'https://www.google.com',
+            website: {
+                url: 'https://www.worldcubeassociation.org',
+                name: 'World Cube Association',
+            },
+        }, { rmWhitespace: true });
+
+        await transporter.sendMail({
             from: `WCA Notifier <${process.env.GMAIL_AUTH?.split(':')[0]}>`,
             to: subscription.emailAddress,
             subject: 'New WCA Competition!',
-            text: '',
-            html: '<textarea readonly>' + JSON.stringify(event, null, 2) + '</textarea>',
-        })));
+            html,
+        });
 
         await completed.updateOne({ _id: subscription.emailAddress }, {
             $push: { completedIDs: { $each: events.map((e) => e.id) } },
@@ -68,4 +89,23 @@ dotenv.config();
     }));
 
     await client.close();
+    transporter.close();
+};
+
+(async () => {
+    if (!process.env.GMAIL_AUTH) {
+        throw new Error(
+            'The variable \x1B[1mGMAIL_AUTH\x1B[22m is not defined. Please add this line to your .env file:\n\n\t' +
+            '\x1B[90m...\x1B[39m\n\t\x1B[34mGMAIL_AUTH\x1B[39m=\x1B[32m"<gmail_address>:<gmail_password>"\x1B[39m\n',
+        );
+    }
+
+    if (!process.env.MONGODB_AUTH) {
+        throw new Error(
+            'The variable \x1B[1mMONGODB_AUTH\x1B[22m is not defined. Please add this line to your .env file:\n\n\t' +
+            '\x1B[90m...\x1B[39m\n\t\x1B[34mMONGODB_AUTH\x1B[39m=\x1B[32m"<mongodb_uri>"\x1B[39m\n',
+        );
+    }
+
+    await main();
 })();
