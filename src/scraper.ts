@@ -28,9 +28,9 @@ const fetchEvent = async (Settings: settings, id: string): Promise<event> => {
 
     const maxCompetitors = parseInt(text.match(/competitor limit of (\d+)/)?.at(1) || 'NaN');
 
-    const registrationFeeMatch = text.match(/registration fee[^\n\d]+((\d+)([,\.]\d+))? \(([\w\s]+)\)/);
+    const registrationFeeMatch = text.match(/fee[^\n\d]+((\d+)([.,]\d+)?) \(([\w\s]+)\)/);
     const registrationFee = Number(registrationFeeMatch?.at(1)?.replace(',', '.') || 'NaN');
-    const registrationFeeCurr = currencyNameToSymbol(registrationFeeMatch?.at(-1) || '');
+    const registrationFeeCurr = currencyNameToSymbol(registrationFeeMatch?.at(4) || '');
 
     const convertedCurrency = await convertCurrency(registrationFeeCurr, Settings.preferredCurrency) * registrationFee;
 
@@ -78,10 +78,11 @@ const getEvents = async (Settings: settings) => {
     const urlArrays: any[] = await Promise.all(urls.map(async (url) => {
         const res = await axios.get(url);
         const $ = load(res.data);
-        return $('ul > li.list-group-item.not-past a').toArray().map((x) => x.attribs.href.split('/').at(-1));
+        const selector = 'ul > li.list-group-item.not-past a:not([target="_blank"])';
+        return $(selector).toArray().map((x) => x.attribs.href.split('/').at(-1));
     }));
 
-    const ids = Array.from(new Set([].concat(...urlArrays)));
+    const ids = Array.from(new Set([].concat(...urlArrays))).filter((x) => x);
     const events = await Promise.all(ids.map((id) => fetchEvent(Settings, id)));
     return events.filter((event) => filterEvent(event, Settings));
 };
