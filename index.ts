@@ -4,6 +4,7 @@ import { getEvents } from './src/scraper';
 import nodemailer from 'nodemailer';
 import ejs from 'ejs';
 import getSymbolFromCurrency from 'currency-symbol-map';
+import { htmlToText } from 'html-to-text';
 
 dotenv.config();
 
@@ -48,7 +49,6 @@ const main = async () => {
 
         const html = await ejs.renderFile('email.ejs', {
             events: events.map((event) => ({
-                calendarURL: 'https://www.google.com',
                 eventURL: `https://www.worldcubeassociation.org/competitions/${event.id}#general-info`,
                 date: event.dateStart.getTime(),
                 title: event.name,
@@ -74,13 +74,15 @@ const main = async () => {
                 url: 'https://www.worldcubeassociation.org',
                 name: 'World Cube Association',
             },
+            summary: `${events.length} new ${events.length > 1 ? 'events' : 'event'} found!`,
         }, { rmWhitespace: true });
 
         await transporter.sendMail({
             from: `WCA Notifier <${process.env.GMAIL_AUTH?.split(':')[0]}>`,
             to: subscription.emailAddress,
-            subject: 'New WCA Competition!',
+            subject: `New WCA ${events.length > 1 ? 'Competitions' : 'Competition'}!`,
             html,
+            text: htmlToText(html),
         });
 
         await completed.updateOne({ _id: subscription.emailAddress }, {
