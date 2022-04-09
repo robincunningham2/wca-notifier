@@ -3,7 +3,6 @@
 <%/* EJS args:
 {
     events: Array<{
-        calendarURL: string;
         eventURL: string;
         date: number;
         title: string;
@@ -29,37 +28,39 @@
         url: string;
         name: string;
     };
+    summary: string;
 }
 */%>
 
-<p style="color: transparent; font-size: 0px;">Register before it is too late!</p>
+<p style="color: transparent; font-size: 0px;"><%= summary.padEnd(200, ' ‌') %></p>
 
-<% events.forEach((event) => { %>
-<div style="max-width: 500px; padding: 50px; margin: 0 auto;">
-    <h3 style="
-        line-height: 1.5;
-        font-weight: 500;
-        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
-        font-size: 20px;
-        font-weight: bold;
-        display: inline;
-    ">
-        <a href="<%= event.calendarURL %>" style="color: #5569EE;"><%= new Date(event.date).toLocaleString('en-US', { day: 'numeric', month: 'long' }) %></a>:
-        <a href="<%= event.eventURL %>" style="color: #5569EE;"><%= event.title %></a>
-    </h3>
-    <hr />
-    <p style="font-family: 'Segoe UI', Helvetica, Arial, sans-serif; line-height: 1.5;">
-        <b>Location:</b> <a href="https://www.google.com/maps/place/<%= event.loc.join(',') %>" style="color: #5569EE;" target="_blank"><%= event.location %></a> <br />
-        <b>Competitors:</b> <%= event.competitors.current %>/<%= event.competitors.max %>
-        <% if (event.competitors.current >= event.competitors.max) { %>(full)<% } %> <br />
-        <b>Registration fee:</b> <%= event.fee.origional.symbol %> <%= event.fee.origional.ammount.toFixed(2) %>
-        <% if (event.fee.origional.symbol != event.fee.converted.symbol) { %>(<%= event.fee.converted.symbol %> <%= event.fee.converted.ammount.toFixed(2) %>)<% } %> <br />
-    </p>
+<div style="padding: 50px; max-width: 500px;">
+    <% events.forEach((event) => { %>
+    <div style="margin: 0 auto 45px auto;">
+        <h3 style="
+            line-height: 1.5;
+            font-weight: 500;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+            font-size: 20px;
+            font-weight: bold;
+            display: inline;
+        ">
+            <%= new Date(event.date).toLocaleString('en-US', { day: 'numeric', month: 'long' }) %>:
+            <a href="<%= event.eventURL %>" style="color: #5569EE;"><%= event.title %></a>
+        </h3>
+        <hr />
+        <p style="font-family: 'Segoe UI', Helvetica, Arial, sans-serif; line-height: 1.5;">
+            <b>Location:</b> <a href="https://www.google.com/maps/place/<%= event.loc.join(',') %>" style="color: #5569EE;" target="_blank"><%= event.location %></a> <br />
+            <b>Competitors:</b> <%= event.competitors.current %>/<%= event.competitors.max %>
+            <% if (event.competitors.current >= event.competitors.max) { %>(full)<% } %> <br />
+            <b>Registration fee:</b> <%= event.fee.origional.symbol %> <%= event.fee.origional.ammount.toFixed(2) %>
+            <% if (event.fee.origional.symbol != event.fee.converted.symbol) { %>(<%= event.fee.converted.symbol %> <%= event.fee.converted.ammount.toFixed(2) %>)<% } %> <br />
+        </p>
+    </div>
+    <% }); %>
 </div>
-<% }); %>
 
 <footer style="
-    padding: 20px 0px;
     font-family: 'Segoe UI', Helvetica, Arial, sans-serif;
     font-size: 11px;
     text-align: center;
