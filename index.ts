@@ -66,10 +66,7 @@ const main = async () => {
                 },
             })),
             unsubURL: 'https://www.google.com',
-            website: {
-                url: 'https://www.worldcubeassociation.org',
-                name: 'World Cube Association',
-            },
+            websiteName: 'WCA Notifier',
             summary: `${events.length} new ${events.length > 1 ? 'events' : 'event'} found!`,
         }, { rmWhitespace: true });
 

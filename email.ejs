@@ -24,10 +24,7 @@
         };
     }>;
     unsubURL: string;
-    website: {
-        url: string;
-        name: string;
-    };
+    websiteName: string;
     summary: string;
 }
 */%>
@@ -46,11 +43,11 @@
             display: inline;
         ">
             <%= new Date(event.date).toLocaleString('en-US', { day: 'numeric', month: 'long' }) %>:
-            <a href="<%= event.eventURL %>" style="color: #5569EE;"><%= event.title %></a>
+            <a href="<%= event.eventURL %>" style="color: #4D78DB;"><%= event.title %></a>
         </h3>
         <hr />
         <p style="font-family: 'Segoe UI', Helvetica, Arial, sans-serif; line-height: 1.5;">
-            <b>Location:</b> <a href="https://www.google.com/maps/place/<%= event.loc.join(',') %>" style="color: #5569EE;" target="_blank"><%= event.location %></a> <br />
+            <b>Location:</b> <a href="https://www.google.com/maps/place/<%= event.loc.join(',') %>" style="color: #4D78DB;" target="_blank"><%= event.location %></a> <br />
             <b>Competitors:</b> <%= event.competitors.current %>/<%= event.competitors.max %>
             <% if (event.competitors.current >= event.competitors.max) { %>(full)<% } %> <br />
             <b>Registration fee:</b> <%= event.fee.origional.symbol %> <%= event.fee.origional.ammount.toFixed(2) %>
@@ -67,6 +64,6 @@
     max-width: 600px;
     margin: 0 auto;
 ">
-    &copy; <%= new Date().getFullYear() %> <a href="<%= website.url %>" style="color: #222;" target="_blank"><%= website.name %></a> <br />
-    No longer want to receive these emails? <a href="<%= unsubURL %>" style="color: #5569EE">Unsubscribe</a>
+    &copy; <%= new Date().getFullYear() %> <%= websiteName %> <br />
+    No longer want to receive these emails? <a href="<%= unsubURL %>" style="color: #4D78DB">Unsubscribe</a>
 </footer>
