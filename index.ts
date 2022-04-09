@@ -1,30 +1,26 @@
 import dotenv from 'dotenv';
 import { MongoClient, ServerApiVersion } from 'mongodb';
 import { getEvents } from './src/scraper';
-import nodemailer from 'nodemailer';
 import ejs from 'ejs';
 import getSymbolFromCurrency from 'currency-symbol-map';
 import { htmlToText } from 'html-to-text';
+import { MailClient } from './src/email';
 
 dotenv.config();
 
 const main = async () => {
-    const transporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 587,
-        auth: {
-            user: process.env.GMAIL_AUTH?.split(':')[0],
-            pass: process.env.GMAIL_AUTH?.split(':')[1],
-        },
-    });
-
-    await transporter.verify();
+    const mail = new MailClient(process.env.GMAIL_AUTH || '');
+    await mail.authorize();
 
     const client = new MongoClient(process.env.MONGODB_AUTH || '', { serverApi: ServerApiVersion.v1 });
     await client.connect();
 
     const completed = client.db('data').collection('completed');
     const subscribed = client.db('data').collection('subscribed');
+
+    const unseenEmails = await mail.search([ 'UNSEEN' ], { markMessagesAsRead: true });
+    const unsubEmails = unseenEmails.filter((x) => x.subject == 'unsubscribe').map((e) => e.from.address);
+    await subscribed.deleteMany({ emailAddress: { $in: unsubEmails } });
 
     await Promise.all((await subscribed.find().toArray()).map(async (subscription) => {
         const doc = await completed.findOne({ _id: subscription.emailAddress });
@@ -77,12 +73,15 @@ const main = async () => {
             summary: `${events.length} new ${events.length > 1 ? 'events' : 'event'} found!`,
         }, { rmWhitespace: true });
 
-        await transporter.sendMail({
+        await mail.sendEmail({
             from: `WCA Notifier <${process.env.GMAIL_AUTH?.split(':')[0]}>`,
             to: subscription.emailAddress,
             subject: `New WCA ${events.length > 1 ? 'Competitions' : 'Competition'}!`,
             html,
             text: htmlToText(html),
+            headers: {
+                'List-Unsubscribe': '<mailto:wca.notifier@gmail.com?subject=unsubscribe>',
+            },
         });
 
         await completed.updateOne({ _id: subscription.emailAddress }, {
@@ -91,7 +90,7 @@ const main = async () => {
     }));
 
     await client.close();
-    transporter.close();
+    await mail.close();
 };
 
 (async () => {
