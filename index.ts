@@ -1,43 +1,26 @@
 import dotenv from 'dotenv';
-import { MongoClient, ServerApiVersion } from 'mongodb';
 import { getEvents } from './src/scraper';
 import ejs from 'ejs';
 import getSymbolFromCurrency from 'currency-symbol-map';
 import { htmlToText } from 'html-to-text';
 import { MailClient } from './src/email';
+import { DB } from './src/database';
 
 dotenv.config();
 
 const main = async () => {
     const mail = new MailClient(process.env.GMAIL_AUTH || '');
-    await mail.authorize();
+    const db = new DB(process.env.MONGODB_AUTH || '');
 
-    const client = new MongoClient(process.env.MONGODB_AUTH || '', { serverApi: ServerApiVersion.v1 });
-    await client.connect();
-
-    const completed = client.db('data').collection('completed');
-    const subscribed = client.db('data').collection('subscribed');
+    await Promise.all([ mail.authorize(), db.authorize() ]);
 
     const unseenEmails = await mail.search([ 'UNSEEN' ], { markMessagesAsRead: true });
     const unsubEmails = unseenEmails.filter((x) => x.subject == 'unsubscribe').map((e) => e.from.address);
-    await subscribed.deleteMany({ emailAddress: { $in: unsubEmails } });
 
-    await Promise.all((await subscribed.find().toArray()).map(async (subscription) => {
-        const doc = await completed.findOne({ _id: subscription.emailAddress });
-        let alreadySent = doc?.completedIDs;
-        if (!alreadySent) {
-            await completed.insertOne({ _id: subscription.emailAddress, completedIDs: [] });
-            alreadySent = [];
-        }
+    await db.removeSubscription(...unsubEmails);
 
-        alreadySent = new Set(alreadySent);
-
-        const events = await getEvents({
-            filter: subscription.filter,
-            preferredCurrency: subscription.preferredCurrency,
-            emailAddress: subscription.emailAddress,
-            alreadySent,
-        });
+    await Promise.all((await db.getSubscriptions()).map(async (subscription) => {
+        const events = await getEvents(subscription);
 
         process.stdout.write(`Sending ${subscription.emailAddress} ${events.length} events!\n`);
 
@@ -81,13 +64,12 @@ const main = async () => {
             },
         });
 
-        await completed.updateOne({ _id: subscription.emailAddress }, {
+        await db.coll('completed').updateOne({ emailAddress: subscription.emailAddress }, {
             $push: { completedIDs: { $each: events.map((e) => e.id) } },
         });
     }));
 
-    await client.close();
-    await mail.close();
+    await Promise.all([ db.close(), mail.close() ]);
 };
 
 (async () => {
