@@ -148,4 +148,5 @@ class MailClient {
     }
 }
 
+
 export { Email, MailClient, SearchOptions };

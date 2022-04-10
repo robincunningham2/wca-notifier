@@ -1,18 +1,22 @@
-import { MongoClient, ServerApiVersion, Collection, Document, ObjectId } from 'mongodb';
-import { settings } from './interfaces';
+import { Collection, Document, MongoClient, ObjectId, ServerApiVersion } from 'mongodb';
 
-interface SubscriptionOptions {
+interface EventFilter {
+    continent?: string;
+    country?: string;
+    events: string[];
+    eventFilterType?: number; // 0 = must contain all events, 1 = must contain at least one event
+    registrationFeeMin?: number;
+    registrationFeeMax?: number;
+    acceptFull?: boolean; // if true, the filter will also match full events
+    acceptClosed?: boolean; // if true, the filter will also match events after their registration period
+};
+
+interface Subscription {
+    filter: EventFilter;
     preferredCurrency: string;
-    filter: {
-        continent: string | null;
-        country: string | null;
-        events: string[];
-        eventFilterType: 1 | 0;
-        registrationFeeMin: number;
-        registrationFeeMax: number;
-        acceptFull: boolean;
-        acceptClosed: boolean;
-    };
+    emailAddress: string;
+    alreadySent: Set<string>; // set of IDs that have already been sent to the user to
+    // prevent the same event from being sent multiple times
 };
 
 class DB {
@@ -36,12 +40,14 @@ class DB {
         return this.client.db('data').collection(name);
     }
 
-    async addSubscription(email: string, options: SubscriptionOptions): Promise<ObjectId> {
-        if (await this.coll('subscribed').findOne({ emailAddress: email })) throw new Error('Account already exists');
+    async addSubscription(options: Subscription): Promise<ObjectId> {
+        if (await this.coll('subscribed').findOne({ emailAddress: options.emailAddress })) {
+            throw new Error('Subscription already exists');
+        }
 
         const now = Date.now();
         const document = {
-            emailAddress: email,
+            emailAddress: options.emailAddress,
             preferredCurrency: options.preferredCurrency,
             filter: options.filter,
             dateAdded: now,
@@ -49,8 +55,8 @@ class DB {
         };
 
         const { insertedId } = await this.coll('subscribed').insertOne(document);
-        if (!(await this.coll('completed').findOne({ emailAddress: email }))) {
-            await this.coll('completed').insertOne({ emailAddress: email, completedIDs: [] });
+        if (!(await this.coll('completed').findOne({ emailAddress: options.emailAddress }))) {
+            await this.coll('completed').insertOne({ emailAddress: options.emailAddress, completedIDs: [] });
         }
 
         return insertedId;
@@ -61,7 +67,7 @@ class DB {
         await this.coll('completed').deleteMany({ emailAddress: { $in: emails } });
     }
 
-    async getSubscriptions(): Promise<settings[]> {
+    async getSubscriptions(): Promise<Subscription[]> {
         return await Promise.all((await this.coll('subscribed').find().toArray()).map(async (doc) => {
             const completedDoc = await this.coll('completed').findOne({ emailAddress: doc.emailAddress });
             let alreadySent: string[];
@@ -81,4 +87,5 @@ class DB {
     }
 }
 
-export { SubscriptionOptions, DB };
+
+export { EventFilter, DB, Subscription };

@@ -1,11 +1,26 @@
 import axios from 'axios';
 import { load } from 'cheerio';
-import { convertCurrency, currencyNameToSymbol } from './currency';
-import { event, settings } from './interfaces';
+import { convertCurrency, currencyNameToSymbol } from './utils';
+import { Subscription } from './database';
 
 const EVENTS_BASE_URL = 'https://www.worldcubeassociation.org/competitions/';
 
-const fetchEvent = async (Settings: settings, id: string): Promise<event> => {
+interface Event {
+    id: string;
+    name: string;
+    dateStart: Date;
+    dateEnd: Date;
+    city: string;
+    venue: string;
+    latlong: number[];
+    maxCompetitors: number;
+    registrationFee: number;
+    registrationFeeCurrency: any;
+    convertedRegistrationFee: number;
+    currentCompetitors: number;
+};
+
+const getEventInfo = async (id: string, targetCurrency: string): Promise<Event> => {
     const iCalRes = await axios.get(EVENTS_BASE_URL + id + '.ics');
 
     const dateStartRaw = iCalRes.data.match(/DTSTART;VALUE=DATE:(\d+)/)[1];
@@ -32,7 +47,7 @@ const fetchEvent = async (Settings: settings, id: string): Promise<event> => {
     const registrationFee = Number(registrationFeeMatch?.at(1)?.replace(',', '.') || 'NaN');
     const registrationFeeCurr = currencyNameToSymbol(registrationFeeMatch?.at(4) || '');
 
-    const convertedCurrency = await convertCurrency(registrationFeeCurr, Settings.preferredCurrency) * registrationFee;
+    const convertedCurrency = await convertCurrency(registrationFeeCurr, targetCurrency) * registrationFee;
 
     const registrationsRes = await axios.get(EVENTS_BASE_URL + id + '/registrations');
     $ = load(registrationsRes.data);
@@ -54,10 +69,10 @@ const fetchEvent = async (Settings: settings, id: string): Promise<event> => {
     };
 };
 
-const filterEvent = (event: event, Settings: settings) => {
-    const { filter } = Settings;
+const eventFilter = (subscription: Subscription, event: Event) => {
+    const { filter } = subscription;
     if (new Date() >= event.dateStart) return false;
-    if (Settings.alreadySent.has(event.id)) return false;
+    if (subscription.alreadySent.has(event.id)) return false;
     if (filter.registrationFeeMin && event.convertedRegistrationFee < filter.registrationFeeMin) return false;
     if (filter.registrationFeeMax && event.convertedRegistrationFee > filter.registrationFeeMax) return false;
     if (!filter.acceptFull && event.currentCompetitors >= event.maxCompetitors) return false;
@@ -65,8 +80,8 @@ const filterEvent = (event: event, Settings: settings) => {
     return true;
 };
 
-const getEvents = async (Settings: settings) => {
-    const { filter } = Settings;
+const getEvents = async (subscription: Subscription) => {
+    const { filter } = subscription;
     let urls: string[];
 
     const baseURL = 'https://www.worldcubeassociation.org/competitions?utf8=%E2%9C%93&search=&state=present&year=al' +
@@ -83,8 +98,9 @@ const getEvents = async (Settings: settings) => {
     }));
 
     const ids = Array.from(new Set([].concat(...urlArrays))).filter((x) => x);
-    const events = await Promise.all(ids.map((id) => fetchEvent(Settings, id)));
-    return events.filter((event) => filterEvent(event, Settings));
+    const events = await Promise.all(ids.map((id) => getEventInfo(id, subscription.preferredCurrency)));
+    return events.filter((event) => eventFilter(subscription, event));
 };
 
-export { fetchEvent, getEvents };
+
+export { Event, eventFilter, EVENTS_BASE_URL, getEventInfo, getEvents };
