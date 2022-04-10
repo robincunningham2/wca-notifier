@@ -7,6 +7,8 @@ import { DB } from './database';
 import { log } from './utils';
 
 const main = async (): Promise<void> => {
+    log('background-job', 'Starting up');
+
     const mail = new MailClient(process.env.GMAIL_AUTH || '');
     const db = new DB(process.env.MONGODB_AUTH || '');
 
@@ -71,6 +73,8 @@ const main = async (): Promise<void> => {
     }));
 
     await Promise.all([ db.close(), mail.close() ]);
+
+    log('background-job', 'Finished');
 };
 
 
