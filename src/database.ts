@@ -51,9 +51,28 @@ class DB {
         const document = {
             emailAddress: options.emailAddress,
             preferredCurrency: options.preferredCurrency,
-            filter: options.filter,
-            dateAdded: now,
-            dateModified: now,
+            filter: {
+                continent: options.filter.continent,
+                country: options.filter.country,
+                events: options.filter.events,
+                eventFilterType: {
+                    $numberInt: options.filter.eventFilterType,
+                },
+                registrationFeeMin: {
+                    $numberDouble: options.filter.registrationFeeMin,
+                },
+                registrationFeeMax: {
+                    $numberDouble: options.filter.registrationFeeMax,
+                },
+                acceptFull: options.filter.acceptFull,
+                acceptClosed: options.filter.acceptClosed,
+            },
+            dateAdded: {
+                $numberLong: now,
+            },
+            dateModified: {
+                $numberLong: now,
+            },
         };
 
         const { insertedId } = await this.coll('subscriptions').insertOne(document);
