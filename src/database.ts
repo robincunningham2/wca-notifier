@@ -1,25 +1,5 @@
-import { Collection, Document, MongoClient, ObjectId, ServerApiVersion } from 'mongodb';
+import { MongoClient, ServerApiVersion, Collection, Document, ObjectId } from 'mongodb';
 import { settings } from './interfaces';
-
-/*
-{
-  _id: { '$oid': '6248767358af6eb1481212c2' },
-  emailAddress: 'robinmichaelcunningham@gmail.com',
-  preferredCurrency: 'EUR',
-  filter: {
-    continent: null,
-    country: 'Netherlands',
-    events: [ '333' ],
-    eventFilterType: { '$numberInt': '1' },
-    registrationFeeMin: { '$numberDouble': '0.0' },
-    registrationFeeMax: { '$numberDouble': '30.0' },
-    acceptFull: true,
-    acceptClosed: false
-  },
-  dateAdded: { '$numberLong': '1648916343939' },
-  dateModified: { '$numberLong': '1648916343939' }
-}
-*/
 
 interface SubscriptionOptions {
     preferredCurrency: string;
