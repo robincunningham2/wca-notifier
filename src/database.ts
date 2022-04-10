@@ -15,8 +15,10 @@ interface Subscription {
     filter: EventFilter;
     preferredCurrency: string;
     emailAddress: string;
-    alreadySent: Set<string>; // set of IDs that have already been sent to the user to
-    // prevent the same event from being sent multiple times
+
+    // This is a set of competition/event IDs that that have already been sent to the user,
+    // this is to prevent duplicate emails.
+    fullfilledEvents: Set<string>;
 };
 
 class DB {
@@ -55,8 +57,8 @@ class DB {
         };
 
         const { insertedId } = await this.coll('subscribed').insertOne(document);
-        if (!(await this.coll('completed').findOne({ emailAddress: options.emailAddress }))) {
-            await this.coll('completed').insertOne({ emailAddress: options.emailAddress, completedIDs: [] });
+        if (!(await this.coll('fullfilled').findOne({ emailAddress: options.emailAddress }))) {
+            await this.coll('fullfilled').insertOne({ emailAddress: options.emailAddress, fullfilledIDs: [] });
         }
 
         return insertedId;
@@ -64,24 +66,24 @@ class DB {
 
     async removeSubscription(...emails: string[]): Promise<void> {
         await this.coll('subscribed').deleteMany({ emailAddress: { $in: emails } });
-        await this.coll('completed').deleteMany({ emailAddress: { $in: emails } });
+        await this.coll('fullfilled').deleteMany({ emailAddress: { $in: emails } });
     }
 
     async getSubscriptions(): Promise<Subscription[]> {
         return await Promise.all((await this.coll('subscribed').find().toArray()).map(async (doc) => {
-            const completedDoc = await this.coll('completed').findOne({ emailAddress: doc.emailAddress });
-            let alreadySent: string[];
-            if (completedDoc) alreadySent = completedDoc.completedIDs;
+            const fullfilledDoc = await this.coll('fullfilled').findOne({ emailAddress: doc.emailAddress });
+            let fullfilled: string[];
+            if (fullfilledDoc) fullfilled = fullfilledDoc.fullfilledIDs;
             else {
-                await this.coll('completed').insertOne({ emailAddress: doc.emailAddress, completedIDs: [] });
-                alreadySent = [];
+                await this.coll('fullfilled').insertOne({ emailAddress: doc.emailAddress, fullfilledIDs: [] });
+                fullfilled = [];
             }
 
             return {
                 emailAddress: doc.emailAddress,
                 preferredCurrency: doc.preferredCurrency,
                 filter: doc.filter,
-                alreadySent: new Set(alreadySent),
+                fullfilledEvents: new Set(fullfilled),
             };
         }));
     }

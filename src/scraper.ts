@@ -72,7 +72,7 @@ const getEventInfo = async (id: string, targetCurrency: string): Promise<Event> 
 const eventFilter = (subscription: Subscription, event: Event) => {
     const { filter } = subscription;
     if (new Date() >= event.dateStart) return false;
-    if (subscription.alreadySent.has(event.id)) return false;
+    if (subscription.fullfilledEvents.has(event.id)) return false;
     if (filter.registrationFeeMin && event.convertedRegistrationFee < filter.registrationFeeMin) return false;
     if (filter.registrationFeeMax && event.convertedRegistrationFee > filter.registrationFeeMax) return false;
     if (!filter.acceptFull && event.currentCompetitors >= event.maxCompetitors) return false;

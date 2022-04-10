@@ -64,8 +64,8 @@ const main = async () => {
             },
         });
 
-        await db.coll('completed').updateOne({ emailAddress: subscription.emailAddress }, {
-            $push: { completedIDs: { $each: events.map((e) => e.id) } },
+        await db.coll('fullfilled').updateOne({ emailAddress: subscription.emailAddress }, {
+            $push: { fullfilledIDs: { $each: events.map((e) => e.id) } },
         });
     }));
 
