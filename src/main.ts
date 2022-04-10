@@ -4,22 +4,26 @@ import getSymbolFromCurrency from 'currency-symbol-map';
 import { htmlToText } from 'html-to-text';
 import { MailClient } from './email';
 import { DB } from './database';
+import { log } from './utils';
 
 const main = async (): Promise<void> => {
     const mail = new MailClient(process.env.GMAIL_AUTH || '');
     const db = new DB(process.env.MONGODB_AUTH || '');
 
     await Promise.all([ mail.authorize(), db.authorize() ]);
+    log('background-job', 'Authorized to Gmail and MongoDB');
 
     const unseenEmails = await mail.search([ 'UNSEEN' ], { markMessagesAsRead: true });
     const unsubEmails = unseenEmails.filter((x) => x.subject == 'unsubscribe').map((e) => e.from.address);
+
+    unsubEmails.forEach((email) => log('background-job', 'Unsubscribed', email));
 
     await db.removeSubscription(...unsubEmails);
 
     await Promise.all((await db.getSubscriptions()).map(async (subscription) => {
         const events = await getEvents(subscription);
 
-        process.stdout.write(`Sending ${subscription.emailAddress} ${events.length} events!\n`);
+        log('background-job', 'Sending', subscription.emailAddress, events.length, 'events');
 
         if (events.length == 0) return;
 
