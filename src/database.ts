@@ -43,7 +43,7 @@ class DB {
     }
 
     async addSubscription(options: Subscription): Promise<ObjectId> {
-        if (await this.coll('subscribed').findOne({ emailAddress: options.emailAddress })) {
+        if (await this.coll('subscriptions').findOne({ emailAddress: options.emailAddress })) {
             throw new Error('Subscription already exists');
         }
 
@@ -56,7 +56,7 @@ class DB {
             dateModified: now,
         };
 
-        const { insertedId } = await this.coll('subscribed').insertOne(document);
+        const { insertedId } = await this.coll('subscriptions').insertOne(document);
         if (!(await this.coll('fullfilled').findOne({ emailAddress: options.emailAddress }))) {
             await this.coll('fullfilled').insertOne({ emailAddress: options.emailAddress, fullfilledIDs: [] });
         }
@@ -65,12 +65,12 @@ class DB {
     }
 
     async removeSubscription(...emails: string[]): Promise<void> {
-        await this.coll('subscribed').deleteMany({ emailAddress: { $in: emails } });
+        await this.coll('subscriptions').deleteMany({ emailAddress: { $in: emails } });
         await this.coll('fullfilled').deleteMany({ emailAddress: { $in: emails } });
     }
 
     async getSubscriptions(): Promise<Subscription[]> {
-        return await Promise.all((await this.coll('subscribed').find().toArray()).map(async (doc) => {
+        return await Promise.all((await this.coll('subscriptions').find().toArray()).map(async (doc) => {
             const fullfilledDoc = await this.coll('fullfilled').findOne({ emailAddress: doc.emailAddress });
             let fullfilled: string[];
             if (fullfilledDoc) fullfilled = fullfilledDoc.fullfilledIDs;
