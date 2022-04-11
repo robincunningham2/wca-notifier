@@ -1,14 +1,26 @@
 import { Collection, Document, MongoClient, ObjectId, ServerApiVersion } from 'mongodb';
 
+class DatabaseError extends Error {
+    message: string;
+    code: string;
+
+    constructor(code: string, message: string) {
+        super(message);
+        Object.setPrototypeOf(this, DatabaseError.prototype);
+        this.message = message;
+        this.code = code;
+    }
+}
+
 interface EventFilter {
-    continent?: string;
-    country?: string;
+    continent: string | null;
+    country: string | null;
     events: string[];
-    eventFilterType?: number; // 0 = must contain all events, 1 = must contain at least one event
-    registrationFeeMin?: number;
-    registrationFeeMax?: number;
-    acceptFull?: boolean; // if true, the filter will also match full events
-    acceptClosed?: boolean; // if true, the filter will also match events after their registration period
+    eventFilterType: number; // 0 = must contain all events, 1 = must contain at least one event
+    registrationFeeMin: number | null;
+    registrationFeeMax: number | null;
+    acceptFull: boolean; // if true, the filter will also match full events
+    acceptClosed: boolean; // if true, the filter will also match events after their registration period
 };
 
 interface Subscription {
@@ -44,7 +56,7 @@ class DB {
 
     async addSubscription(options: Subscription): Promise<ObjectId> {
         if (await this.coll('subscriptions').findOne({ emailAddress: options.emailAddress })) {
-            throw new Error('Subscription already exists');
+            throw new DatabaseError('SUBSCRIPTION_ALREADY_EXISTS', 'Subscription already exists');
         }
 
         const now = Date.now();
@@ -55,24 +67,14 @@ class DB {
                 continent: options.filter.continent,
                 country: options.filter.country,
                 events: options.filter.events,
-                eventFilterType: {
-                    $numberInt: options.filter.eventFilterType,
-                },
-                registrationFeeMin: {
-                    $numberDouble: options.filter.registrationFeeMin,
-                },
-                registrationFeeMax: {
-                    $numberDouble: options.filter.registrationFeeMax,
-                },
+                eventFilterType: options.filter.eventFilterType,
+                registrationFeeMin: options.filter.registrationFeeMin,
+                registrationFeeMax: options.filter.registrationFeeMax,
                 acceptFull: options.filter.acceptFull,
                 acceptClosed: options.filter.acceptClosed,
             },
-            dateAdded: {
-                $numberLong: now,
-            },
-            dateModified: {
-                $numberLong: now,
-            },
+            dateAdded: now,
+            dateModified: now,
         };
 
         const { insertedId } = await this.coll('subscriptions').insertOne(document);
@@ -109,4 +111,4 @@ class DB {
 }
 
 
-export { EventFilter, DB, Subscription };
+export { EventFilter, DatabaseError, DB, Subscription };
