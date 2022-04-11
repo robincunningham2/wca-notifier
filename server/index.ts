@@ -17,6 +17,12 @@ const app = express();
 app.set('view engine', 'ejs');
 app.set('views', './server/pages');
 
+app.use((req, res, next) => {
+    if ((process.env.NODE_ENV == 'prod' || process.env.NODE_ENV == 'production') && !req.secure) {
+        res.redirect('https://' + req.hostname + req.url);
+    } else next();
+});
+
 app.use('/api', api(db));
 
 app.get('/', (_, res, next) => {
