@@ -24,7 +24,7 @@ const log = (tag: string, ...message: any[]) => {
 
     process.stdout.write(process.env.LOG_TIMESTAMPS == '0' ?
         `[${tag}] ${msg}\n` :
-        `[${now.toISOString()}] [${tag}] %{msg}\n`);
+        `[${now.toISOString()}] [${tag}] ${msg}\n`);
 };
 
 
