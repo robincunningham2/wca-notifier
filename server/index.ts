@@ -7,17 +7,20 @@ import { Server } from 'http';
 
 dotenv.config();
 
+const db = new DB(process.env.MONGODB_AUTH || '');
+
 const PORT = parseInt(process.env.PORT || '3000');
 const HOST = process.env.HOSTNAME || '0.0.0.0';
 
 const app = express();
 
-const db = new DB(process.env.MONGODB_AUTH || '');
+app.set('view engine', 'ejs');
+app.set('views', './server/pages');
 
 app.use('/api', api(db));
 
 app.get('/', (_, res, next) => {
-    res.end('Hello, World!');
+    res.render('index');
     next();
 });
 
@@ -46,7 +49,7 @@ app.use((req, res) => {
 
 let server: Server;
 db.authorize().then(() => {
-    server = app.listen(PORT, HOST, () => log('server', `Server listening on ${HOST}:${PORT}`));
+    server = app.listen(PORT, HOST, () => log('server', `Server listening on http://${HOST}:${PORT}`));
 });
 
 process.on('SIGINT', () => {
