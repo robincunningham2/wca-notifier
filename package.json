@@ -5,12 +5,13 @@
   "main": "dist/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "tsc && node dist/index.js",
+    "start": "node dist/index.js",
     "build": "./node_modules/.bin/eslint . && tsc",
     "watch-tsc": "tsc --watch",
     "lint": "./node_modules/.bin/eslint .",
     "lint-fix": "./node_modules/.bin/eslint . --fix",
-    "server": "node dist/server"
+    "server": "node dist/server",
+    "postinstall": "npm run build"
   },
   "repository": {
     "type": "git",
