@@ -15,9 +15,16 @@ const convertCurrency = async (source: string, target: string) => {
 const currencyNameToSymbol = (name: string) => CURRENCY_MAP[name.toLowerCase()] || 'UDF';
 
 const log = (tag: string, ...message: any[]) => {
+    const now = new Date;
+
+    let msg = format(...message);
+    if (process.env.NO_COLOR == '1') {
+        msg = msg.replaceAll(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
+    }
+
     process.stdout.write(process.env.LOG_TIMESTAMPS == '0' ?
-        format('[%s] %s\n', tag, format(...message)) :
-        format('[%s] [%s] %s\n', new Date().toISOString(), tag, format(...message)));
+        `[${tag}] ${msg}\n` :
+        `[${now.toISOString()}] [${tag}] %{msg}\n`);
 };
 
 
