@@ -20,7 +20,7 @@ app.set('views', './server/pages');
 app.enable('trust proxy');
 
 app.use((req, res, next) => {
-    if (process.env.NODE_ENV == 'prod' || process.env.NODE_ENV == 'production' || req.secure) next();
+    if ((process.env.NODE_ENV != 'prod' && process.env.NODE_ENV != 'production') || req.secure) next();
     else res.redirect('https://' + req.hostname + req.url);
 });
 
