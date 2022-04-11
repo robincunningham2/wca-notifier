@@ -1,10 +1,20 @@
 import express from 'express';
 import { log } from '../src/utils';
+import api from './api';
+import dotenv from 'dotenv';
+import { DB } from '../src/database';
+import { Server } from 'http';
+
+dotenv.config();
 
 const PORT = parseInt(process.env.PORT || '3000');
 const HOST = process.env.HOSTNAME || '0.0.0.0';
 
 const app = express();
+
+const db = new DB(process.env.MONGODB_AUTH || '');
+
+app.use('/api', api(db));
 
 app.get('/', (_, res, next) => {
     res.end('Hello, World!');
@@ -34,4 +44,17 @@ app.use((req, res) => {
     log('server', `${req.ip} -> ${req.hostname}  (${status?.padStart(3, '0')})  ${method.padEnd(9)} ${url}`);
 });
 
-app.listen(PORT, HOST, () => log('server', `Server listening on http://${HOST}:${PORT}`));
+let server: Server;
+db.authorize().then(() => {
+    server = app.listen(PORT, HOST, () => log('server', `Server listening on ${HOST}:${PORT}`));
+});
+
+process.on('SIGINT', () => {
+    log('server', 'Received SIGINT, shutting down...');
+    Promise.all([ db.close(), server.close() ]).finally(() => process.exit(0));
+});
+
+process.on('SIGTERM', () => {
+    log('server', 'Received SIGTERM, shutting down...');
+    Promise.all([ db.close(), server.close() ]).finally(() => process.exit(0));
+});
