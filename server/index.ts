@@ -18,7 +18,7 @@ app.set('view engine', 'ejs');
 app.set('views', './server/pages');
 
 app.use((req, res, next) => {
-    if ((process.env.NODE_ENV == 'prod' || process.env.NODE_ENV == 'production') && !req.secure) {
+    if ((process.env.NODE_ENV == 'prod' || process.env.NODE_ENV == 'production') && req.protocol != 'https') {
         res.redirect('https://' + req.hostname + req.url);
     } else next();
 });
