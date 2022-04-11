@@ -44,7 +44,11 @@ app.use((req, res) => {
     if (req.method == 'CONNECT' || req.method == 'HEAD') method = `\x1B[90m${req.method}\x1B[39m`;
     else method = req.method;
 
-    log('server', `${req.ip} -> ${req.hostname}  (${status?.padStart(3, '0')})  ${method.padEnd(9)} ${url}`);
+    let forwardedForHeader = req.headers['x-forwarded-for'];
+    if (forwardedForHeader instanceof Array) forwardedForHeader = forwardedForHeader[0];
+    const remoteIp = forwardedForHeader?.split(',').at(-1) || req.socket.remoteAddress;
+
+    log('server', `${remoteIp} -> ${req.hostname}  (${status?.padStart(3, '0')})  ${method.padEnd(9)} ${url}`);
 });
 
 let server: Server;
