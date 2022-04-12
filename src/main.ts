@@ -1,4 +1,4 @@
-import { getEvents } from './scraper';
+import { Event, getEvents } from './scraper';
 import ejs from 'ejs';
 import getSymbolFromCurrency from 'currency-symbol-map';
 import { htmlToText } from 'html-to-text';
@@ -23,7 +23,13 @@ const main = async (): Promise<void> => {
     await db.removeSubscription(...unsubEmails);
 
     await Promise.all((await db.getSubscriptions()).map(async (subscription) => {
-        const events = await getEvents(subscription);
+        let events: Event[];
+        try {
+            events = await getEvents(subscription);
+        } catch (err) {
+            log('background-job', 'Error fetching events for subscription', subscription.emailAddress, err);
+            return;
+        }
 
         log('background-job', 'Sending', subscription.emailAddress, events.length, 'events');
 
@@ -56,16 +62,20 @@ const main = async (): Promise<void> => {
             summary: `${events.length} new ${events.length > 1 ? 'events' : 'event'} found!`,
         }, { rmWhitespace: true });
 
-        await mail.sendEmail({
-            from: `WCA Notifier <${process.env.GMAIL_AUTH?.split(':')[0]}>`,
-            to: subscription.emailAddress,
-            subject: `New WCA ${events.length > 1 ? 'Competitions' : 'Competition'}!`,
-            html,
-            text: htmlToText(html),
-            headers: {
-                'List-Unsubscribe': '<mailto:wca.notifier@gmail.com?subject=unsubscribe>',
-            },
-        });
+        try {
+            await mail.sendEmail({
+                from: `WCA Notifier <${process.env.GMAIL_AUTH?.split(':')[0]}>`,
+                to: subscription.emailAddress,
+                subject: `New WCA ${events.length > 1 ? 'Competitions' : 'Competition'}!`,
+                html,
+                text: htmlToText(html),
+                headers: {
+                    'List-Unsubscribe': '<mailto:wca.notifier@gmail.com?subject=unsubscribe>',
+                },
+            });
+        } catch (err) {
+            log('background-job', 'Error sending email', subscription.emailAddress, err);
+        }
 
         await db.coll('fullfilled').updateOne({ emailAddress: subscription.emailAddress }, {
             $push: { fullfilledIDs: { $each: events.map((e) => e.id) } },
