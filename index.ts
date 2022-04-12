@@ -1,8 +1,8 @@
 import dotenv from 'dotenv';
 import main from './src/main';
-import cronitor from 'cronitor';
+import Cronitor from 'cronitor';
 import { log } from './src/utils';
-import cron from 'node-cron';
+import { CronJob } from 'cron';
 
 dotenv.config();
 
@@ -20,7 +20,7 @@ if (!process.env.MONGODB_AUTH) {
 `);
 }
 
-if (!process.env.CRON_PATTERN && !process.env.CRONITOR_KEY) {
+if (!process.env.CRON_PATTERN) {
     throw new Error(`The variable 'CRON_PATTERN' is not defined. Please define it in your .env file:
 
     CRON_PATTERN="<cron_pattern>"
@@ -29,23 +29,38 @@ if (!process.env.CRON_PATTERN && !process.env.CRONITOR_KEY) {
 `);
 }
 
-if (process.env.CRON_PATTERN) {
-    log('cron-manager', 'Scheduling cron job with pattern', process.env.CRON_PATTERN);
+if (
+    (process.env.CRONITOR_JOB_KEY && !process.env.CRONITOR_API_KEY) ||
+    (process.env.CRONITOR_API_KEY && !process.env.CRONITOR_JOB_KEY)
+) {
+    throw new Error(`Either 'CRONITOR_JOB_KEY' or 'CRONITOR_API_KEY' is not defined. Please define it in your .env file:
 
-    cron.schedule(process.env.CRON_PATTERN, async (startDate: Date) => {
-        log('cron-manager', 'Starting cron job at', startDate);
-
-        try {
-            await main();
-        } catch (err) {
-            log('cron-manager', 'Error running cron job', err);
-        } finally {
-            const endDate = new Date;
-            log('cron-manager', 'Cron job finished in', endDate.getTime() - startDate.getTime(), 'ms');
-        }
-    });
-} else {
-    log('cron-manager', 'Starting cron job with cronitor key', process.env.CRONITOR_KEY);
-
-    cronitor.wrap(process.env.CRONITOR_KEY || '', main);
+    CRONITOR_JOB_KEY="<cronitor_job_key>"
+    or:
+    CRONITOR_API_KEY="<cronitor_api_key>"
+`);
 }
+
+log('cron-manager', 'Scheduling cron job with pattern', process.env.CRON_PATTERN);
+
+const job = new CronJob(process.env.CRON_PATTERN, async () => {
+    const startDate = new Date;
+    try {
+        if (process.env.CRONITOR_JOB_KEY && process.env.CRONITOR_API_KEY) {
+            log('cron-manager', 'Starting cron job and sending telemetry to cronitor at', startDate);
+            const cronitor = Cronitor(process.env.CRONITOR_API_KEY); // eslint-disable-line new-cap
+            const worker = cronitor.wrap(process.env.CRONITOR_JOB_KEY, main);
+            await worker();
+        } else {
+            log('cron-manager', 'Starting cron job at', startDate);
+            await main();
+        }
+    } catch (err) {
+        log('cron-manager', 'Error running cron job', err);
+    } finally {
+        const endDate = new Date;
+        log('cron-manager', 'Cron job finished in', endDate.getTime() - startDate.getTime(), 'ms');
+    }
+}, null, true, process.env.TZ);
+
+job.start();
