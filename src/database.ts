@@ -90,6 +90,26 @@ class DB {
         await this.coll('fullfilled').deleteMany({ emailAddress: { $in: emails } });
     }
 
+    async getSubscription(query: { [k: string]: any }): Promise<Subscription | null> {
+        const doc = await this.coll('subscriptions').findOne(query);
+        if (!doc) return null;
+
+        const fullfilledDoc = await this.coll('fullfilled').findOne({ emailAddress: doc.emailAddress });
+        let fullfilled: string[];
+        if (fullfilledDoc) fullfilled = fullfilledDoc.fullfilledIDs;
+        else {
+            await this.coll('fullfilled').insertOne({ emailAddress: doc.emailAddress, fullfilledIDs: [] });
+            fullfilled = [];
+        }
+
+        return {
+            emailAddress: doc.emailAddress,
+            preferredCurrency: doc.preferredCurrency,
+            filter: doc.filter,
+            fullfilledEvents: new Set(fullfilled),
+        };
+    }
+
     async getSubscriptions(): Promise<Subscription[]> {
         return await Promise.all((await this.coll('subscriptions').find().toArray()).map(async (doc) => {
             const fullfilledDoc = await this.coll('fullfilled').findOne({ emailAddress: doc.emailAddress });
