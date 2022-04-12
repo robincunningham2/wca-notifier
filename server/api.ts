@@ -88,7 +88,7 @@ v1.post('/subscription', async (req, res, next) => {
                 res.status(409).json({
                     ok: false,
                     apiCode: 'RECOURSE_ALREADY_EXISTS',
-                    message: 'Subscription already exists.',
+                    error: 'Subscription already exists.',
                 });
             } else {
                 res.status(500).json({
