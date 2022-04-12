@@ -105,22 +105,18 @@ v1.post('/subscription', async (req, res, next) => {
     next();
 });
 
-v1.post('/unsubscribe', async (req, res, next) => {
-    if (req.body instanceof Object && typeof req.body.emailAddress == 'string') {
-        try {
-            await db.removeSubscription(req.body.emailAddress);
-            sendOK(res, 'Subscription removed.');
-        } catch (err) {
-            log('server', 'Error removing subscription:', err);
+v1.delete('/subscription/:email', async (req, res, next) => {
+    try {
+        await db.removeSubscription(req.params.email);
+        sendOK(res, 'Subscription removed.');
+    } catch (err) {
+        log('server', 'Error removing subscription:', err);
 
-            res.status(500).json({
-                ok: false,
-                apiCode: 'DB_ERROR',
-                error: 'Unable to remove subscription. Please try again later.',
-            });
-        }
-    } else {
-        res.status(400).json({ ok: false, apiCode: 'BAD_REQUEST', error: 'Invalid request body.' });
+        res.status(500).json({
+            ok: false,
+            apiCode: 'DB_ERROR',
+            error: 'Unable to remove subscription. Please try again later.',
+        });
     }
 
     next();
