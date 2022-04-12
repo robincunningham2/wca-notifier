@@ -24,6 +24,44 @@ v1.get('/', (_, res, next) => {
     next();
 });
 
+v1.get('/subscription', async (req, res, next) => {
+    if (!req.query.id && !req.query.email) {
+        res.status(400).json({
+            ok: false,
+            apiCode: 'INVALID_PARAMETER',
+            error: 'Missing parameter \'id\' or \'email\'.',
+        });
+    } else {
+        try {
+            let query: { [k: string]: any } = {};
+            if (req.query.hasOwnProperty('id')) query.id = req.query.id;
+            if (req.query.hasOwnProperty('email')) query.emailAddress = req.query.email;
+
+            if (query.id instanceof Array) query.id = query.id[0];
+            if (query.emailAddress instanceof Array) query.id = query.id[0];
+
+            const subscription = await db.getSubscription(query);
+            if (!subscription) {
+                res.status(404).json({ ok: false, apiCode: 'NOT_FOUND', error: 'Subscription not found.' });
+            } else {
+                sendOK(res, Object.assign(subscription, {
+                    fullfilledEvents: Array.from(subscription.fullfilledEvents),
+                }));
+            }
+        } catch (err) {
+            log('server', 'Error fetching subscription:', err);
+
+            res.status(500).json({
+                ok: false,
+                apiCode: 'DB_ERROR',
+                error: 'Unable to fetch subscription. Please try again later.',
+            });
+        }
+    }
+
+    next();
+});
+
 v1.post('/subscription', async (req, res, next) => {
     if (
         req.body instanceof Object &&
