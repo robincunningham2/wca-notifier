@@ -33,7 +33,7 @@ v1.get('/subscription', async (req, res, next) => {
         });
     } else {
         try {
-            let query: { [k: string]: any } = {};
+            const query: { [k: string]: any } = {};
             if (req.query.hasOwnProperty('id')) query.id = req.query.id;
             if (req.query.hasOwnProperty('email')) query.emailAddress = req.query.email;
 
