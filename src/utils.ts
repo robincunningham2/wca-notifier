@@ -51,7 +51,7 @@ const log = async (tag: string, ...message: any[]) => {
         });
     }
 
-    await db.coll('logs').updateOne({ _id }, { $push: { entries: [ now, tag, msg ] } });
+    await db.coll('logs').updateOne({ _id }, { $push: { entries: [ now, tag, format(...message) ] } });
 };
 
 
