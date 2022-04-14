@@ -13,3 +13,6 @@ node_modules/
 
 # Exported
 dist/
+
+# Temp files
+*.temp
