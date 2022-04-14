@@ -1,9 +1,19 @@
 import axios from 'axios';
 import { load } from 'cheerio';
-import { readFileSync } from 'fs';
 import { format } from 'util';
+import { DB } from './database';
+import { config } from 'dotenv';
+import { randomBytes } from 'crypto';
+import { ObjectId } from 'mongodb';
+import { readFileSync, writeFileSync } from 'fs';
+
+config();
+
+writeFileSync('log-id.temp', randomBytes(12).toString('hex'));
 
 const CURRENCY_MAP = JSON.parse(readFileSync('currency-map.json', 'utf8'));
+
+const db = new DB(process.env.MONGODB_AUTH || '');
 
 const convertCurrency = async (source: string, target: string) => {
     if (source == target) return 1;
@@ -14,7 +24,7 @@ const convertCurrency = async (source: string, target: string) => {
 
 const currencyNameToSymbol = (name: string) => CURRENCY_MAP[name.toLowerCase()] || 'UDF';
 
-const log = (tag: string, ...message: any[]) => {
+const log = async (tag: string, ...message: any[]) => {
     const now = new Date;
 
     let msg = format(...message);
@@ -25,6 +35,23 @@ const log = (tag: string, ...message: any[]) => {
     process.stdout.write(process.env.LOG_TIMESTAMPS == '0' ?
         `[${tag}] ${msg}\n` :
         `[${now.toISOString()}] [${tag}] ${msg}\n`);
+
+    if (!db.client.hasOwnProperty('topology') || !((db.client as any).topology.isConnected())) {
+        await db.authorize();
+    }
+
+    const _id = new ObjectId(readFileSync('log-id.temp', 'utf8'));
+    const doc = await db.coll('logs').findOne({ _id });
+    if (!doc) {
+        await db.coll('logs').insertOne({
+            _id,
+            startDate: now,
+            env: process.env.NODE_ENV,
+            entries: [],
+        });
+    }
+
+    await db.coll('logs').updateOne({ _id }, { $push: { entries: [ now, tag, msg ] } });
 };
 
 
