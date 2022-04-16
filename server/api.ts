@@ -197,7 +197,7 @@ v1.delete('/subscription', async (req, res, next) => {
             sendOK(res, 'Subscription removed.');
         } catch (err) {
             log('server', 'Error removing subscription:', err);
-    
+
             res.status(500).json({
                 ok: false,
                 apiCode: 'DB_ERROR',
