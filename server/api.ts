@@ -209,6 +209,18 @@ v1.delete('/subscription', async (req, res, next) => {
     next();
 });
 
+v1.use((req, res, next) => {
+    if (res.writableEnded == false) {
+        res.status(404).json({
+            ok: false,
+            apiCode: 'INVALID_ENDPOINT',
+            error: `Invalid endpoint: ${req.url}`,
+        });
+    }
+
+    next();
+});
+
 // ======
 
 api.use('/v1', v1);
@@ -218,7 +230,7 @@ api.use((_, res, next) => {
         res.status(400).json({
             ok: false,
             apiCode: 'INVALID_API_VERSION',
-            data: 'Invalid API version.',
+            error: 'Invalid API version.',
         });
     }
 
@@ -230,7 +242,7 @@ api.use((err: any, _: express.Request, res: express.Response, next: express.Next
         res.status(400).json({
             ok: false,
             apiCode: 'INVALID_JSON',
-            data: `Invalid JSON: ${err.message}`,
+            error: `Invalid JSON: ${err.message}`,
         });
     } else {
         log('server', 'Error:', err);
