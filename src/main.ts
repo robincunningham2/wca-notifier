@@ -1,7 +1,5 @@
 import { Event, getEvents } from './scraper';
-import ejs from 'ejs';
 import getSymbolFromCurrency from 'currency-symbol-map';
-import { htmlToText } from 'html-to-text';
 import { MailClient } from './email';
 import { DB } from './database';
 import { log } from './utils';
