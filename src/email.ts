@@ -1,4 +1,6 @@
 import nodemailer from 'nodemailer';
+import ejs from 'ejs';
+import { htmlToText } from 'html-to-text';
 import Imap from 'imap';
 import { MailParser } from 'mailparser';
 
@@ -131,6 +133,30 @@ class MailClient {
         await this.transporter.sendMail({
             from: `WCA Notifier <${process.env.GMAIL_AUTH?.split(':')[0]}>`,
             ...options,
+        });
+    }
+
+    async sendEmailFromTemplate(
+        to: string,
+        subject: string,
+        path: string,
+        data: ejs.Data,
+        ejsOptions?: ejs.Options,
+    ): Promise<void> {
+        if (this._open != 1) throw new Error('MailClient is not authorized!');
+
+        const html = await ejs.renderFile(path, data, ejsOptions);
+        const text = htmlToText(html);
+
+        await this.transporter.sendMail({
+            from: `WCA Notifier <${process.env.GMAIL_AUTH?.split(':')[0]}>`,
+            to,
+            subject,
+            html,
+            text,
+            headers: {
+                'List-Unsubscribe': `<mailto:${process.env.GMAIL_AUTH?.split(':')[0]}?subject=unsubscribe>`,
+            },
         });
     }
 

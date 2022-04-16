@@ -35,44 +35,39 @@ const main = async (): Promise<void> => {
 
         if (events.length == 0) return;
 
-        const html = await ejs.renderFile('emails/update.ejs', {
-            events: events.map((event) => ({
-                eventURL: `https://www.worldcubeassociation.org/competitions/${event.id}#general-info`,
-                date: event.dateStart.getTime(),
-                title: event.name,
-                location: event.city,
-                fee: {
-                    origional: {
-                        symbol: getSymbolFromCurrency(event.registrationFeeCurrency),
-                        ammount: event.registrationFee,
-                    },
-                    converted: {
-                        symbol: getSymbolFromCurrency(subscription.preferredCurrency),
-                        ammount: event.convertedRegistrationFee,
-                    },
-                },
-                loc: event.latlong,
-                competitors: {
-                    current: event.currentCompetitors,
-                    max: event.maxCompetitors,
-                },
-            })),
-            unsubURL: 'https://www.google.com',
-            websiteName: 'WCA Notifier',
-            summary: `${events.length} new ${events.length > 1 ? 'events' : 'event'} found!`,
-        }, { rmWhitespace: true });
-
         try {
-            await mail.sendEmail({
-                from: `WCA Notifier <${process.env.GMAIL_AUTH?.split(':')[0]}>`,
-                to: subscription.emailAddress,
-                subject: `New WCA ${events.length > 1 ? 'Competitions' : 'Competition'}!`,
-                html,
-                text: htmlToText(html),
-                headers: {
-                    'List-Unsubscribe': '<mailto:wca.notifier@gmail.com?subject=unsubscribe>',
+            await mail.sendEmailFromTemplate(
+                subscription.emailAddress,
+                `New WCA ${events.length > 1 ? 'Competitions' : 'Competition'}!`,
+                'emails/update.ejs',
+                {
+                    events: events.map((event) => ({
+                        eventURL: `https://www.worldcubeassociation.org/competitions/${event.id}#general-info`,
+                        date: event.dateStart.getTime(),
+                        title: event.name,
+                        location: event.city,
+                        fee: {
+                            origional: {
+                                symbol: getSymbolFromCurrency(event.registrationFeeCurrency),
+                                ammount: event.registrationFee,
+                            },
+                            converted: {
+                                symbol: getSymbolFromCurrency(subscription.preferredCurrency),
+                                ammount: event.convertedRegistrationFee,
+                            },
+                        },
+                        loc: event.latlong,
+                        competitors: {
+                            current: event.currentCompetitors,
+                            max: event.maxCompetitors,
+                        },
+                    })),
+                    unsubURL: 'https://www.google.com',
+                    websiteName: 'WCA Notifier',
+                    summary: `${events.length} new ${events.length > 1 ? 'events' : 'event'} found!`,
                 },
-            });
+                { rmWhitespace: true },
+            );
         } catch (err) {
             log('background-job', 'Error sending email', subscription.emailAddress, err);
         }
