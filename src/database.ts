@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import { Collection, Document, MongoClient, ObjectId, ServerApiVersion } from 'mongodb';
 
 class DatabaseError extends Error {
@@ -27,6 +28,11 @@ interface Subscription {
     filter: EventFilter;
     preferredCurrency: string;
     emailAddress: string;
+    verification: {
+        status: string;
+        code: string;
+        expires: Date;
+    };
 
     // This is a set of competition/event IDs that that have already been sent to the user,
     // this is to prevent duplicate emails.
@@ -54,10 +60,12 @@ class DB {
         return this.client.db('data').collection(name);
     }
 
-    async addSubscription(options: Subscription): Promise<ObjectId> {
+    async addSubscription(options: Subscription): Promise<{ insertedId: ObjectId, verificationCode: string }> {
         if (await this.coll('subscriptions').findOne({ emailAddress: options.emailAddress })) {
             throw new DatabaseError('SUBSCRIPTION_ALREADY_EXISTS', 'Subscription already exists');
         }
+
+        const verificationCode = randomBytes(14).toString('base64url');
 
         const now = Date.now();
         const document = {
@@ -73,6 +81,11 @@ class DB {
                 acceptFull: options.filter.acceptFull,
                 acceptClosed: options.filter.acceptClosed,
             },
+            verification: {
+                status: 'PENDING',
+                code: verificationCode,
+                expires: new Date(now + 15 * 60 * 1000),
+            },
             dateAdded: now,
             dateModified: now,
         };
@@ -82,7 +95,7 @@ class DB {
             await this.coll('fullfilled').insertOne({ emailAddress: options.emailAddress, fullfilledIDs: [] });
         }
 
-        return insertedId;
+        return { insertedId, verificationCode };
     }
 
     async removeSubscription(...emails: string[]): Promise<void> {
@@ -114,6 +127,7 @@ class DB {
             emailAddress: doc.emailAddress,
             preferredCurrency: doc.preferredCurrency,
             filter: doc.filter,
+            verification: doc.verification,
             fullfilledEvents: new Set(fullfilled),
         };
     }
@@ -132,6 +146,7 @@ class DB {
                 emailAddress: doc.emailAddress,
                 preferredCurrency: doc.preferredCurrency,
                 filter: doc.filter,
+                verification: doc.verification,
                 fullfilledEvents: new Set(fullfilled),
             };
         }));
