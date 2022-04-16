@@ -35,7 +35,7 @@ const main = async (): Promise<void> => {
 
         if (events.length == 0) return;
 
-        const html = await ejs.renderFile('email.ejs', {
+        const html = await ejs.renderFile('emails/update.ejs', {
             events: events.map((event) => ({
                 eventURL: `https://www.worldcubeassociation.org/competitions/${event.id}#general-info`,
                 date: event.dateStart.getTime(),
