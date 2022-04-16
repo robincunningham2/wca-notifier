@@ -1,10 +1,12 @@
 import express from 'express';
 import { DB, DatabaseError, Subscription } from '../src/database';
 import { log } from '../src/utils';
+import { MailClient } from '../src/email';
 
 const sendOK = (res: express.Response, data: any) => res.status(200).json({ ok: true, apiCode: 'OK', data });
 
 let db: DB;
+let mail: MailClient;
 
 const api = express.Router(); // eslint-disable-line new-cap
 
@@ -257,7 +259,8 @@ api.use((err: any, _: express.Request, res: express.Response, next: express.Next
 });
 
 
-export default (database: DB) => {
+export default (database: DB, mailClient: MailClient) => {
     db = database;
+    mail = mailClient;
     return api;
 };

@@ -4,10 +4,12 @@ import api from './api';
 import dotenv from 'dotenv';
 import { DB } from '../src/database';
 import { Server } from 'http';
+import { MailClient } from '../src/email';
 
 dotenv.config();
 
 const db = new DB(process.env.MONGODB_AUTH || '');
+const mail = new MailClient(process.env.GMAIL_AUTH || '');
 
 const PORT = parseInt(process.env.PORT || '3000');
 const HOST = process.env.HOSTNAME || '0.0.0.0';
@@ -24,7 +26,7 @@ app.use((req, res, next) => {
     else res.redirect('https://' + req.hostname + req.url);
 });
 
-app.use('/api', api(db));
+app.use('/api', api(db, mail));
 
 app.get('/', (_, res, next) => {
     res.render('index');
@@ -59,7 +61,8 @@ app.use((req, res) => {
 });
 
 let server: Server;
-db.authorize().then(() => {
+
+Promise.all([ db.authorize(), mail.authorize() ]).then(() => {
     server = app.listen(PORT, HOST, () => log('server', `Server listening on http://${HOST}:${PORT}`));
 });
 
