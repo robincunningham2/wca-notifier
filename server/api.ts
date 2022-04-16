@@ -121,7 +121,7 @@ v1.delete('/subscription', async (req, res, next) => {
             if (query.id instanceof Array) query.id = query.id[0];
             if (query.emailAddress instanceof Array) query.id = query.id[0];
 
-            await db.removeSubscription(query);
+            await db.removeSubscriptionByQuery(query);
             sendOK(res, 'Subscription removed.');
         } catch (err) {
             log('server', 'Error removing subscription:', err);

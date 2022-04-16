@@ -90,6 +90,14 @@ class DB {
         await this.coll('fullfilled').deleteMany({ emailAddress: { $in: emails } });
     }
 
+    async removeSubscriptionByQuery(query: { [k: string]: any }): Promise<void> {
+        const doc = await this.coll('subscriptions').findOne(query);
+        if (!doc) return;
+
+        await this.coll('subscriptions').deleteOne(query);
+        await this.coll('fullfilled').deleteOne({ emailAddress: doc.emailAddress });
+    }
+
     async getSubscription(query: { [k: string]: any }): Promise<Subscription | null> {
         const doc = await this.coll('subscriptions').findOne(query);
         if (!doc) return null;
