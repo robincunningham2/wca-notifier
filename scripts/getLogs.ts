@@ -1,4 +1,4 @@
-import { DB } from './src/database';
+import { DB } from '../src/database';
 import { config } from 'dotenv';
 import { ObjectId } from 'mongodb';
 
