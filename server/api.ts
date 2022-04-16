@@ -105,18 +105,33 @@ v1.post('/subscription', async (req, res, next) => {
     next();
 });
 
-v1.delete('/subscription/:email', async (req, res, next) => {
-    try {
-        await db.removeSubscription(req.params.email);
-        sendOK(res, 'Subscription removed.');
-    } catch (err) {
-        log('server', 'Error removing subscription:', err);
-
-        res.status(500).json({
+v1.delete('/subscription', async (req, res, next) => {
+    if (!req.query.id && !req.query.email) {
+        res.status(400).json({
             ok: false,
-            apiCode: 'DB_ERROR',
-            error: 'Unable to remove subscription. Please try again later.',
+            apiCode: 'INVALID_PARAMETER',
+            error: 'Missing parameter \'id\' or \'email\'.',
         });
+    } else {
+        try {
+            const query: { [k: string]: any } = {};
+            if (req.query.hasOwnProperty('id')) query.id = req.query.id;
+            if (req.query.hasOwnProperty('email')) query.emailAddress = req.query.email;
+
+            if (query.id instanceof Array) query.id = query.id[0];
+            if (query.emailAddress instanceof Array) query.id = query.id[0];
+
+            await db.removeSubscription(query);
+            sendOK(res, 'Subscription removed.');
+        } catch (err) {
+            log('server', 'Error removing subscription:', err);
+    
+            res.status(500).json({
+                ok: false,
+                apiCode: 'DB_ERROR',
+                error: 'Unable to remove subscription. Please try again later.',
+            });
+        }
     }
 
     next();
